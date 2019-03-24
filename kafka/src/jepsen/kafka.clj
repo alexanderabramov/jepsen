@@ -1,31 +1,34 @@
 (ns jepsen.kafka
   (:gen-class)
-  (:require  [clojure.tools.logging :refer :all]
-             [clojure.java.io :as io]
-             [clojure.string     :as str]
-             [gregor.core :as gregor]
-             [jepsen  [db    :as db]
-                      [cli        :as cli]
-                      [core  :as jepsen]
-                      [client  :as client]
-                      [control :as c]
-                      [tests :as tests]
-                      [checker   :as checker]
-                      [model     :as model]
-                      [generator :as gen]
-                      [store     :as store]
-                      [nemesis   :as nemesis]
-                      [report    :as report]
-                      [codec     :as codec]
-                      [util      :as util :refer  [meh log-op
-                                                   timeout
-                                                   relative-time-nanos]]
-                      ]
-             [jepsen.control :as c :refer  [|]]
-             [jepsen.checker.timeline :as timeline]
-             ;[knossos.op :as op]
-             [jepsen.control.util :as cu]
-             [jepsen.os.ubuntu :as ubuntu])
+  (:require [clojure.tools.logging :refer :all]
+            [clojure.java.io :as io]
+            [clojure.string :as str]
+            [gregor.core :as gregor]
+            [jepsen [db :as db]
+             [cli :as cli]
+             [core :as jepsen]
+             [client :as client]
+             [control :as c]
+             [tests :as tests]
+             [checker :as checker]
+             [model :as model]
+             [generator :as gen]
+             [store :as store]
+             [nemesis :as nemesis]
+             [report :as report]
+             [codec :as codec]
+             [util :as util :refer [meh log-op
+                                    timeout
+                                    relative-time-nanos]]
+             ]
+            [jepsen.control :as c :refer [|]]
+            [jepsen.checker.timeline :as timeline]
+    ;[knossos.op :as op]
+            [jepsen.control.util :as cu]
+            [jepsen.os.ubuntu :as ubuntu]
+            [jepsen.os.debian :as debian]
+            [jepsen.zookeeper.db :as zookeeperdb]
+            )
   )
 
 (def topic "jepsen")
@@ -383,6 +386,24 @@
         (gen/once {:type :invoke
                    :f    :drain})))))
 
+(defn zookeeper-test-base
+  (merge tests/noop-test
+         {
+          :nodes     ["n1"]
+          :name      "zookeeper"
+          :os        debian/os
+          :db        (zookeeperdb "3.4.9-3+deb8u1")
+          }))
+
+(defn kafka-test-base
+  (merge tests/noop-test
+         {
+          :nodes     ["n2"]
+          :name      "kafka"
+          :os        debian/os
+          :db        (db "2.12" "0.10.2.0")
+          }))
+
 (defn kafka-test
     [opts]
       (merge  tests/noop-test
@@ -399,11 +420,3 @@
                              :total-queue checker/total-queue})
                :generator  gen1}
       ))
-
-(defn -main
-      "Handles command line arguments. Can either run a test, or a web server for
-      browsing results."
-      [& args]
-      (cli/run! (merge (cli/single-test-cmd {:test-fn kafka-test})
-                       (cli/serve-cmd))
-                args))
