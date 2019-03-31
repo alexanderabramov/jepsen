@@ -23,9 +23,11 @@
     client1
     client2))
 
-(defn r [_ _] {:type :invoke, :f :read, :value nil})
+(defn- w1 [test process] {:type :invoke, :f :write, :value 1})
+(defn- w2 [test process] {:type :invoke, :f :write, :value 2})
+(defn- enq [test process] {:type :invoke, :f :enqueue, :value 42})
 
-(defn client
+(defn- client
   ""
   [node type]
   (reify client/Client
@@ -49,7 +51,7 @@
     (close! [_ test]
       (info node "close" type))))
 
-(defn db
+(defn- db
   ""
   [n v1 v2]
   (reify db/DB
@@ -64,7 +66,7 @@
         (info node "tearing" v2))
       )))
 
-(defn sandbox-test
+(defn- sandbox-test
   ""
   [opts]
   (merge tests/noop-test
@@ -74,9 +76,8 @@
           ;:os        debian/os
           :db        (db 2 "1.0" "2.0")
           :client    (client nil nil)
-          :generator (->> r
-                          (gen/nemesis nil)
-                          (gen/time-limit 1))}))
+          :generator (->> (gen/concat (gen/on #{1 2} w1) (gen/on #{3 4} w2) (gen/on #{5} enq))
+                          (gen/limit 8))}))
 
 (defn -main
   ""
